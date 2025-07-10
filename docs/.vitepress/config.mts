@@ -4,6 +4,7 @@ import { defineConfig } from 'vitepress'
 export default defineConfig({
   title: "Kislate's Note",
   description: "Kislate's web note powered by VitePress",
+  base: '/WebNote/', // Ensure the base path matches your GitHub Pages repository name
   themeConfig: {
     // https://vitepress.dev/reference/default-theme-config
     nav: [
