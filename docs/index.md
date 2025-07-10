@@ -50,7 +50,7 @@ const heroVariants = [
   },
   {
     name: "404 Brain Not Found",
-    text: "一个前端开发者的碎碎念",
+    text: "一个苦逼大学生的碎碎念",
     tagline: "Where bugs come to life"
   },
   {
