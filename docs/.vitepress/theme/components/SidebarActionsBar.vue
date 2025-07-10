@@ -1,0 +1,116 @@
+<template>
+  <div class="sidebar-actions-bar">
+    <div class="action-buttons">
+      <button class="action-button small-button" title="新建文件" @click="createNewFile">
+        <span class="icon">�+</span>
+      </button>
+      <button class="action-button small-button" title="新建文件夹" @click="createNewFolder">
+        <span class="icon">📁+</span>
+      </button>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { inject } from 'vue';
+
+// 注入服务
+const sidebarService = inject('sidebarService');
+
+// 创建新文件
+function createNewFile() {
+  document.dispatchEvent(new CustomEvent('webnote:create-file', { 
+    detail: { parentPath: 'docs' },
+    bubbles: true
+  }));
+}
+
+// 创建新文件夹
+function createNewFolder() {
+  document.dispatchEvent(new CustomEvent('webnote:create-folder', { 
+    detail: { parentPath: 'docs' },
+    bubbles: true
+  }));
+}
+
+// 刷新侧边栏
+async function refreshSidebar() {
+  try {
+    // 触发侧边栏刷新事件
+    document.dispatchEvent(new CustomEvent('webnote:refresh-sidebar'));
+    
+    // 如果有 sidebarService，直接调用
+    if (sidebarService && sidebarService.mergeSidebars) {
+      await sidebarService.mergeSidebars();
+    }
+  } catch (error) {
+    console.error('刷新侧边栏失败:', error);
+  }
+}
+
+// 折叠所有菜单
+function collapseAll() {
+  document.dispatchEvent(new CustomEvent('webnote:collapse-all'));
+}
+</script>
+
+<style>
+.sidebar-actions-bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 2px 6px;
+  border-bottom: 1px solid var(--vp-c-divider);
+  background-color: var(--vp-c-bg-soft);
+}
+
+.action-buttons {
+  display: flex;
+  gap: 2px;
+}
+
+.action-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--vp-c-text-2);
+  transition: all 0.2s;
+}
+
+.action-button.small-button {
+  width: 24px;
+  height: 24px;
+  font-size: 12px;
+}
+
+.action-button:hover {
+  background-color: var(--vp-c-bg-mute);
+  color: var(--vp-c-brand);
+}
+
+.action-button .icon {
+  font-size: 14px;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .sidebar-actions-bar {
+    padding: 8px;
+  }
+  
+  .action-button {
+    width: 36px;
+    height: 36px;
+  }
+  
+  .action-button .icon {
+    font-size: 16px;
+  }
+}
+</style>

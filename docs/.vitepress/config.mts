@@ -39,7 +39,9 @@ export default defineConfig({
         collapsible: true,
         items: [
           { text: 'VitePress 指南', link: '/vitepress-guide' },
-          { text: '数学公式', link: '/math-formulas' }
+          { text: '在线编辑指南', link: '/online-editing-guide' },
+          { text: '数学公式', link: '/math-formulas' },
+          { text: '测试笔记', link: '/test-note' }
         ]
       },
       {
@@ -50,6 +52,12 @@ export default defineConfig({
           { text: 'Markdown 示例', link: '/markdown-examples' },
           { text: 'API 示例', link: '/api-examples' }
         ]
+      },
+      {
+        text: '笔记',
+        collapsed: false,
+        collapsible: true,
+        items: []
       }
     ] as unknown) as DefaultTheme.Sidebar,
 

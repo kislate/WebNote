@@ -3,6 +3,20 @@ import { h } from 'vue'
 import DefaultTheme from 'vitepress/theme'
 import Layout from './Layout.vue'
 import './style.css'
+import './editor-style.css'
+
+// 导入笔记编辑相关组件
+import NoteApp from './components/NoteApp.vue'
+import NoteManager from './components/NoteManager.vue'
+import MarkdownEditor from './components/MarkdownEditor.vue'
+import EditButton from './components/EditButton.vue'
+import FolderActions from './components/FolderActions.vue'
+import EnhancedSidebar from './components/EnhancedSidebar.vue'
+
+// 导入服务
+import githubService from './services/githubService'
+import storageService from './services/storageService'
+import sidebarService from './services/sidebarService'
 
 export default {
   extends: DefaultTheme,
@@ -11,7 +25,20 @@ export default {
     // 这里可以添加全局设置
   },
   enhanceApp({ app, router, siteData }) {
-    // 注册全局组件或进行其他设置
+    // 注册全局组件
+    app.component('NoteApp', NoteApp)
+    app.component('NoteManager', NoteManager)
+    app.component('MarkdownEditor', MarkdownEditor)
+    app.component('EditButton', EditButton)
+    app.component('FolderActions', FolderActions)
+    app.component('EnhancedSidebar', EnhancedSidebar)
+    
+    // 全局挂载服务以便组件间共享
+    app.provide('githubService', githubService)
+    app.provide('storageService', storageService)
+    app.provide('sidebarService', sidebarService)
+    
+    // 其他设置
     if (typeof window !== 'undefined') {
       // 监听窗口大小变化，处理响应式布局
       window.addEventListener('resize', () => {

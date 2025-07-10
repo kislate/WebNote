@@ -13,31 +13,53 @@
       </div>
     </button>
     
-    <Layout>
-      <template #sidebar-nav-before>
-        <!-- 在侧边栏导航前插入按钮，这样可以确保按钮在侧边栏内部 -->
-      </template>
-      
-      <template #sidebar-nav-after>
-        <!-- 在侧边栏导航后插入按钮，显示在侧边栏底部 -->
-        <button 
-          v-if="!isHomePage && !isMobile && sidebarVisible" 
-          class="sidebar-toggle-button" 
-          @click="toggleSidebar" 
-          title="隐藏侧边栏">
-          <div class="hamburger-icon">
-            <span></span>
-            <span></span>
-            <span></span>
+    <!-- 使用 NoteApp 包装 Layout -->
+    <note-app>
+      <Layout>
+        <!-- 在导航栏添加编辑按钮和GitHub用户菜单 -->
+        <template #nav-bar-content-after>
+          <div class="nav-bar-custom-content">
+            <nav-bar-edit />
+            <github-user-menu />
           </div>
-        </button>
-      </template>
-    </Layout>
+        </template>
+        
+        <template #sidebar-nav-before>
+          <!-- 侧边栏顶部操作栏 -->
+          <sidebar-actions-bar v-if="!isHomePage" />
+        </template>
+        
+        <template #sidebar-nav>
+          <!-- 使用增强版侧边栏代替原版侧边栏 -->
+          <enhanced-sidebar :original-items="originalSidebar" />
+        </template>
+        
+        <template #sidebar-nav-after>
+          <!-- 在侧边栏导航后插入按钮，显示在侧边栏底部 -->
+          <button 
+            v-if="!isHomePage && !isMobile && sidebarVisible" 
+            class="sidebar-toggle-button" 
+            @click="toggleSidebar" 
+            title="隐藏侧边栏">
+            <div class="hamburger-icon">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+          </button>
+        </template>
+      </Layout>
+    </note-app>
   </div>
 </template>
 
 <script setup>
 import DefaultTheme from 'vitepress/theme'
+import NoteApp from './components/NoteApp.vue'
+import EnhancedSidebar from './components/EnhancedSidebar.vue'
+import NavBarEdit from './components/NavBarEdit.vue'
+import GitHubUserMenu from './components/GitHubUserMenu.vue'
+import SidebarActionsBar from './components/SidebarActionsBar.vue'
 import { ref, onMounted, watchEffect, computed } from 'vue'
 import { useData, useRoute } from 'vitepress'
 
@@ -45,7 +67,13 @@ const { Layout } = DefaultTheme
 const sidebarVisible = ref(true)
 const isMobile = ref(false)
 const route = useRoute()
-const { frontmatter } = useData()
+const { frontmatter, theme } = useData()
+
+// 保存原始侧边栏配置
+const originalSidebar = computed(() => {
+  if (!theme.value || !theme.value.sidebar) return []
+  return theme.value.sidebar
+})
 
 // 判断当前是否是首页
 const isHomePage = computed(() => {
@@ -220,6 +248,13 @@ onMounted(() => {
 .VPSidebar .sidebar-toggle-button:hover::after {
   content: "隐藏侧边栏";
   opacity: 1;
+}
+
+/* 导航栏自定义内容样式 */
+.nav-bar-custom-content {
+  display: flex;
+  align-items: center;
+  gap: 16px;
 }
 
 /* 响应式调整 */

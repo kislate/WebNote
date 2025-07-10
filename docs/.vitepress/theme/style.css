@@ -142,6 +142,28 @@ body.sidebar-hidden .VPNavBar.has-sidebar {
   opacity: 1 !important;
 }
 
+/* 自定义社交图标样式 */
+.VPSocialLink svg {
+  width: 24px;
+  height: 24px;
+  transition: transform 0.3s ease;
+}
+
+/* 图标悬停效果 */
+.VPSocialLink:hover svg {
+  transform: scale(1.2);
+}
+
+/* 第二个自定义图标的特殊样式 */
+.VPSocialLinks .VPSocialLink:nth-child(2) svg {
+  fill: var(--vp-c-brand); /* 使用主题品牌色 */
+}
+
+/* 第三个自定义图标的特殊样式 */
+.VPSocialLinks .VPSocialLink:nth-child(3) svg {
+  fill: #00A1D6; /* Bilibili蓝 */
+}
+
 /* 适配移动端 */
 @media (max-width: 768px) {
   body.sidebar-hidden .VPContent {
@@ -162,5 +184,11 @@ body.sidebar-hidden .VPNavBar.has-sidebar {
   /* 子项目图标在移动端也稍大 */
   .VPSidebar .VPSidebarItem .items .VPLink::before {
     font-size: 14px;
+  }
+  
+  /* 移动端图标调整 */
+  .VPSocialLink svg {
+    width: 22px;
+    height: 22px;
   }
 }
