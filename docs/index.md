@@ -29,7 +29,7 @@ features:
     details: "在制造bug方面确实很丰富"
 ---
 
-<div class="random-button">
+<div class="random-button" id="randomButtonContainer">
   <button id="randomizeButton" title="换个风格">🎲</button>
 </div>
 
@@ -160,7 +160,10 @@ onMounted(() => {
     
     // 为按钮绑定事件
     const button = document.getElementById('randomizeButton');
-    if (button) {
+    const buttonContainer = document.getElementById('randomButtonContainer');
+    
+    if (button && buttonContainer) {
+      // 点击按钮时随机内容
       button.addEventListener('click', () => {
         randomizeContent();
         
@@ -170,6 +173,60 @@ onMounted(() => {
           button.classList.remove('spin');
         }, 500);
       });
+      
+      // 滚动事件 - 隐藏按钮
+      let scrollTimer;
+      let lastScrollTop = 0;
+      
+      window.addEventListener('scroll', () => {
+        const currentScrollTop = window.pageYOffset || document.documentElement.scrollTop;
+        
+        // 如果滚动了超过50px，隐藏按钮
+        if (Math.abs(currentScrollTop - lastScrollTop) > 50) {
+          buttonContainer.classList.add('hidden');
+          
+          // 清除之前的定时器
+          clearTimeout(scrollTimer);
+          
+          // 设置新的定时器，1.5秒后显示按钮
+          scrollTimer = setTimeout(() => {
+            buttonContainer.classList.remove('hidden');
+          }, 1500);
+          
+          lastScrollTop = currentScrollTop;
+        }
+      });
+      
+      // 检测是否为触摸设备
+      const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+      
+      if (!isTouchDevice) {
+        // 桌面设备：鼠标悬停效果
+        buttonContainer.addEventListener('mouseenter', () => {
+          buttonContainer.classList.add('active');
+        });
+        
+        buttonContainer.addEventListener('mouseleave', () => {
+          buttonContainer.classList.remove('active');
+        });
+      } else {
+        // 触摸设备：始终保持半透明状态，点击时才完全显示
+        buttonContainer.classList.add('touch-device');
+        
+        // 触摸设备点击外部区域时恢复半透明
+        document.addEventListener('click', (e) => {
+          if (!buttonContainer.contains(e.target)) {
+            buttonContainer.classList.remove('active');
+          } else {
+            buttonContainer.classList.add('active');
+            
+            // 点击按钮后3秒自动恢复半透明
+            setTimeout(() => {
+              buttonContainer.classList.remove('active');
+            }, 3000);
+          }
+        });
+      }
     }
   }
 });
@@ -181,16 +238,41 @@ onMounted(() => {
   left: 20px;
   bottom: 20px;
   z-index: 100;
+  opacity: 0.4;
+  transition: all 0.3s ease;
+}
+
+/* 悬停或激活状态 */
+.random-button.active,
+.random-button:hover {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+/* 隐藏状态 */
+.random-button.hidden {
+  opacity: 0;
+  transform: translateY(20px);
+  pointer-events: none;
+}
+
+/* 触摸设备特殊样式 */
+.random-button.touch-device {
+  opacity: 0.5;
+}
+
+.random-button.touch-device.active {
+  opacity: 1;
 }
 
 .random-button button {
-  width: 50px;
-  height: 50px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   background: linear-gradient(145deg, #bd34fe, #41d1ff);
   border: none;
   color: white;
-  font-size: 24px;
+  font-size: 18px; /* 稍微小一点的字体 */
   cursor: pointer;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
   transition: all 0.3s ease;
@@ -220,6 +302,19 @@ onMounted(() => {
 .VPFeature .title,
 .VPFeature .details {
   transition: opacity 0.3s ease;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .random-button {
+    bottom: 70px; /* 手机上位置更高，避开底部导航 */
+    left: 15px;
+  }
+  
+  .random-button button {
+    width: 36px; /* 手机上稍大一点，方便点击 */
+    height: 36px;
+  }
 }
 </style>
 
