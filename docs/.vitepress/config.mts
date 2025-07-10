@@ -9,6 +9,16 @@ export default defineConfig({
   // 忽略死链接检查，避免构建失败
   ignoreDeadLinks: true,
   
+  // 添加数学公式支持 - 使用 markdown-it-mathjax3
+  markdown: {
+    math: {
+      renderer: 'mathjax',
+      displayMode: false,
+      inlineMathDelimiters: [['$', '$']],
+      blockMathDelimiters: [['$$', '$$']],
+    },
+  },
+
   themeConfig: {
     // https://vitepress.dev/reference/default-theme-config
     nav: [
@@ -21,7 +31,8 @@ export default defineConfig({
       {
         text: '指南',
         items: [
-          { text: 'VitePress 指南', link: '/vitepress-guide' }
+          { text: 'VitePress 指南', link: '/vitepress-guide' },
+          { text: '数学公式', link: '/math-formulas' }
         ]
       },
       {
