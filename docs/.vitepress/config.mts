@@ -26,10 +26,17 @@ export default defineConfig({
       { text: '指南', link: '/vitepress-guide' },
       { text: '示例', link: '/markdown-examples' }
     ],
-
+    
+    // 启用所有侧边栏分组的折叠功能
+    sidebarMenuLabel: '菜单',
+    outlineTitle: '本页目录',
+    
+    // 侧边栏配置
     sidebar: [
       {
         text: '指南',
+        collapsed: false,
+        collapsible: true,
         items: [
           { text: 'VitePress 指南', link: '/vitepress-guide' },
           { text: '数学公式', link: '/math-formulas' }
@@ -37,6 +44,8 @@ export default defineConfig({
       },
       {
         text: '示例',
+        collapsed: false,
+        collapsible: true,
         items: [
           { text: 'Markdown 示例', link: '/markdown-examples' },
           { text: 'API 示例', link: '/api-examples' }

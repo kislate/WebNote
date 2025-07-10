@@ -4,9 +4,22 @@
   --vp-home-hero-name-background: -webkit-linear-gradient(120deg, #bd34fe, #41d1ff);
   --vp-home-hero-image-background-image: linear-gradient(-45deg, #bd34fe 50%, #4c09b9 50%);
   --vp-home-hero-image-filter: blur(40px);
+  
+  /* 侧边栏过渡效果 */
+  --vp-sidebar-transition-duration: 0.3s;
+  
+  /* 页面主体内容过渡效果 */
+  --vp-layout-transition-duration: 0.3s;
 }
 
 /* 为随机内容变化添加过渡效果 - 已移至首页内联样式 */
+
+/* 侧边栏切换按钮样式 */
+.sidebar-toggle-button {
+  margin-top: 1rem;
+  margin-left: 1rem;
+  margin-bottom: 1rem;
+}
 
 /* 为Features添加一些悬浮效果 */
 .VPFeature {
@@ -16,4 +29,71 @@
 .VPFeature:hover {
   transform: translateY(-5px);
   box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+/* 侧边栏过渡效果 */
+.VPSidebar {
+  transition: transform var(--vp-sidebar-transition-duration) ease;
+}
+
+/* 主体内容过渡效果 */
+.VPContent {
+  transition: padding var(--vp-layout-transition-duration) ease;
+}
+
+/* 折叠/展开图标样式 - 增强文件夹样式效果 */
+.VPSidebarItem .items {
+  position: relative;
+  transition: all 0.25s ease;
+}
+
+/* 增强折叠/展开视觉效果 */
+.VPSidebar .VPSidebarItem .text {
+  transition: color 0.25s;
+}
+
+.VPSidebar .VPSidebarItem:not(.collapsed) > .item > .indicator {
+  transition: transform 0.25s;
+}
+
+/* 添加文件夹图标 */
+.VPSidebar .VPSidebarItem > .item > .text::before {
+  content: "📁 ";
+  opacity: 0.7;
+  font-size: 14px;
+  margin-right: 2px;
+}
+
+/* 展开状态的文件夹 */
+.VPSidebar .VPSidebarItem:not(.collapsed) > .item > .text::before {
+  content: "📂 ";
+}
+
+/* 侧边栏隐藏后的内容宽度调整 */
+body.sidebar-hidden .VPContent {
+  --vp-sidebar-width: 0px !important;
+  padding-left: 1rem;
+}
+
+body.sidebar-hidden .VPNavBar.has-sidebar {
+  --vp-sidebar-width: 0px !important;
+  --vp-nav-height-desktop: 64px;
+}
+
+/* 适配移动端 */
+@media (max-width: 768px) {
+  body.sidebar-hidden .VPContent {
+    padding-left: 1rem;
+  }
+  
+  /* 移动端的侧边栏样式 */
+  .sidebar-open .VPSidebar {
+    width: 100%;
+    max-width: 320px;
+  }
+  
+  /* 文件图标在移动端稍微大一点 */
+  .VPSidebar .VPSidebarItem > .item > .text::before {
+    font-size: 16px;
+  }
 }
