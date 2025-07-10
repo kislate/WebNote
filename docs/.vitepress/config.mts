@@ -1,4 +1,4 @@
-import { defineConfig } from 'vitepress'
+import { DefaultTheme, defineConfig } from 'vitepress'
 
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
@@ -32,7 +32,7 @@ export default defineConfig({
     outlineTitle: '本页目录',
     
     // 侧边栏配置
-    sidebar: [
+    sidebar: ([
       {
         text: '指南',
         collapsed: false,
@@ -51,7 +51,7 @@ export default defineConfig({
           { text: 'API 示例', link: '/api-examples' }
         ]
       }
-    ],
+    ] as unknown) as DefaultTheme.Sidebar,
 
     socialLinks: [
       { icon: 'github', link: 'https://github.com/kislate/WebNote' }

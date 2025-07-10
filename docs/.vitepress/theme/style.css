@@ -56,17 +56,67 @@
   transition: transform 0.25s;
 }
 
-/* 添加文件夹图标 */
+/* 美化子项目的图标 */
+.VPSidebar .VPSidebarItem .items .VPLink::before {
+  content: "📄 ";
+  opacity: 0.75;
+  font-size: 12px;
+  margin-right: 4px;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+/* 给不同类型的子项目使用不同图标 */
+.VPSidebar .VPSidebarItem:nth-child(1) .items .VPLink:nth-child(1)::before {
+  content: "📝 "; /* 第一个子项：文档 */
+}
+
+.VPSidebar .VPSidebarItem:nth-child(1) .items .VPLink:nth-child(2)::before {
+  content: "🍕 "; /* 第二个子项：数学公式 */
+}
+
+.VPSidebar .VPSidebarItem:nth-child(2) .items .VPLink:nth-child(1)::before {
+  content: "✨ "; /* 示例组第一项：Markdown */
+}
+
+.VPSidebar .VPSidebarItem:nth-child(2) .items .VPLink:nth-child(2)::before {
+  content: "⚙️ "; /* 示例组第二项：API */
+}
+
+/* 添加更丰富的文件夹图标 */
 .VPSidebar .VPSidebarItem > .item > .text::before {
   content: "📁 ";
-  opacity: 0.7;
+  opacity: 0.85;
   font-size: 14px;
-  margin-right: 2px;
+  margin-right: 4px;
+  display: inline-block;
+  vertical-align: text-bottom;
+  /* 禁用默认图标 */
+  mask-image: none !important;
+  -webkit-mask-image: none !important;
+  background-color: transparent !important;
 }
 
 /* 展开状态的文件夹 */
 .VPSidebar .VPSidebarItem:not(.collapsed) > .item > .text::before {
   content: "📂 ";
+}
+
+/* 为不同类型的文档组添加不同图标 */
+.VPSidebar .VPSidebarItem:nth-child(1) > .item > .text::before {
+  content: "📚 "; /* 第一组：书籍/指南 */
+}
+
+.VPSidebar .VPSidebarItem:nth-child(1):not(.collapsed) > .item > .text::before {
+  content: "📖 "; /* 第一组展开：打开的书 */
+}
+
+.VPSidebar .VPSidebarItem:nth-child(2) > .item > .text::before {
+  content: "🧩 "; /* 第二组：示例 */
+}
+
+.VPSidebar .VPSidebarItem:nth-child(2):not(.collapsed) > .item > .text::before {
+  content: "🔍 "; /* 第二组展开：放大镜 */
 }
 
 /* 侧边栏隐藏后的内容宽度调整 */
@@ -78,6 +128,18 @@ body.sidebar-hidden .VPContent {
 body.sidebar-hidden .VPNavBar.has-sidebar {
   --vp-sidebar-width: 0px !important;
   --vp-nav-height-desktop: 64px;
+}
+
+/* 深色模式下的图标微调 */
+.dark .VPSidebar .VPSidebarItem > .item > .text::before,
+.dark .VPSidebar .VPSidebarItem .items .VPLink::before {
+  opacity: 0.9; /* 深色模式下图标更亮一些 */
+}
+
+/* 侧边栏激活项的特殊图标 */
+.VPSidebar .VPLink.active::before {
+  content: "🔖 " !important; /* 当前活动页面使用书签图标 */
+  opacity: 1 !important;
 }
 
 /* 适配移动端 */
@@ -95,5 +157,10 @@ body.sidebar-hidden .VPNavBar.has-sidebar {
   /* 文件图标在移动端稍微大一点 */
   .VPSidebar .VPSidebarItem > .item > .text::before {
     font-size: 16px;
+  }
+  
+  /* 子项目图标在移动端也稍大 */
+  .VPSidebar .VPSidebarItem .items .VPLink::before {
+    font-size: 14px;
   }
 }
