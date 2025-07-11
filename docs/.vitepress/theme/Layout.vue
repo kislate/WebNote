@@ -16,17 +16,18 @@
     <!-- 使用 NoteApp 包装 Layout -->
     <note-app>
       <Layout>
-        <!-- 在导航栏添加编辑按钮和GitHub用户菜单 -->
+        <!-- 在导航栏添加编辑按钮和操作按钮 -->
         <template #nav-bar-content-after>
           <div class="nav-bar-custom-content">
             <nav-bar-edit />
-            <github-user-menu />
           </div>
         </template>
         
-        <template #sidebar-nav-before>
-          <!-- 侧边栏顶部操作栏 -->
-          <sidebar-actions-bar v-if="!isHomePage" />
+        <template #nav-bar-content-before>
+          <!-- 导航栏前添加登录和新建按钮 -->
+          <div class="nav-bar-custom-content-before">
+            <nav-actions />
+          </div>
         </template>
         
         <template #sidebar-nav>
@@ -58,8 +59,7 @@ import DefaultTheme from 'vitepress/theme'
 import NoteApp from './components/NoteApp.vue'
 import EnhancedSidebar from './components/EnhancedSidebar.vue'
 import NavBarEdit from './components/NavBarEdit.vue'
-import GitHubUserMenu from './components/GitHubUserMenu.vue'
-import SidebarActionsBar from './components/SidebarActionsBar.vue'
+import NavActions from './components/NavActions.vue'
 import { ref, onMounted, watchEffect, computed } from 'vue'
 import { useData, useRoute } from 'vitepress'
 
@@ -255,6 +255,14 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 16px;
+}
+
+/* 导航栏前自定义内容样式 */
+.nav-bar-custom-content-before {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-right: auto; /* 推动其他元素向右 */
 }
 
 /* 响应式调整 */

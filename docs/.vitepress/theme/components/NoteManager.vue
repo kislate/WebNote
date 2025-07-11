@@ -918,12 +918,51 @@ watch(() => props.path, (newPath) => {
 async function loadFileContent(path) {
   if (!path) return;
   
-  currentPath.value = path;
-  await startEdit();
-  
-  // 强制进入编辑模式
-  isEditing.value = true;
-  isCreatingNew.value = false;
+  try {
+    console.log("直接加载文件内容:", path);
+    currentPath.value = path;
+    
+    // 尝试先从本地草稿获取内容
+    const draft = await storageService.getDraft(path);
+    
+    if (draft && draft.content) {
+      noteContent.value = draft.content;
+      originalContent.value = draft.content;
+    } else if (isAuthenticated.value) {
+      // 从GitHub获取内容
+      try {
+        const result = await githubService.getFileContent(path);
+        noteContent.value = result.content;
+        originalContent.value = result.content;
+        currentFileSha.value = result.sha;
+      } catch (error) {
+        console.error("从GitHub获取内容失败:", error);
+        // 尝试从页面获取内容
+        noteContent.value = page.value.html || '';
+        originalContent.value = noteContent.value;
+      }
+    } else {
+      // 未登录时使用页面内容
+      noteContent.value = page.value.html || '';
+      originalContent.value = noteContent.value;
+    }
+    
+    // 强制进入编辑模式
+    isEditing.value = true;
+    isCreatingNew.value = false;
+    
+    // 添加到最近文件
+    await storageService.addToRecentFiles({
+      path: path,
+      name: page.value.title || path.split('/').pop()
+    });
+    
+    // 更新最近文件列表
+    await loadRecentFiles();
+  } catch (error) {
+    console.error("加载文件内容失败:", error);
+    alert("无法加载文件内容，请稍后再试");
+  }
 }
 
 // 对外暴露方法

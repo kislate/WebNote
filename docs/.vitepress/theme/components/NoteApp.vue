@@ -34,14 +34,20 @@ const router = useRouter();
 // 处理编辑笔记事件
 function handleEditNote(event) {
   const path = event.detail || `docs/${page.value.relativePath}`;
+  console.log("编辑笔记:", path);
+  
+  // 先激活编辑器
   activateEditor(path);
   
-  // 立即激活编辑模式并加载文件内容
+  // 然后立即加载文件内容并进入编辑模式
   if (noteManager.value) {
+    console.log("调用loadFileContent");
+    // 使用更短的延时确保快速响应
     setTimeout(() => {
       noteManager.value.loadFileContent(path);
-      noteManager.value.isEditing = true;
-    }, 50);
+    }, 10);
+  } else {
+    console.warn("无法获取noteManager引用");
   }
 }
 

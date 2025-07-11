@@ -1,44 +1,31 @@
 <template>
-  <div class="github-user-menu">
-    <!-- 汉堡键图标 - 临时替代GitHub图标，分开设置事件处理器，避免事件冒泡问题 -->
-    <div class="menu-icon" tabindex="0" 
-      @click="toggleMenu"
-      @mouseenter="showMenu = true" 
-      @mouseleave="handleMouseLeave">
-      <div class="hamburger-icon">
-        <span></span>
-        <span></span>
-        <span></span>
-      </div>
+  <div class="nav-actions">
+    <!-- 登录按钮或用户信息 -->
+    <button v-if="!isAuthenticated" class="nav-action-button login-button" @click="showLoginForm = true" title="GitHub登录">
+      登录
+    </button>
+    <div v-else class="user-info-bar">
+      <span class="username">{{ githubUsername }}</span>
+      <button class="nav-action-button logout-button" @click="logout" title="退出登录">
+        退出
+      </button>
     </div>
-
-    <!-- 下拉菜单 -->
-    <div class="dropdown-menu" v-if="showMenu" :class="{ 'is-authenticated': isAuthenticated }">
-      <div class="menu-header" v-if="isAuthenticated">
-        <div class="user-info">
-          <div class="username">{{ githubUsername }}</div>
-          <div class="repo">{{ githubRepo }}</div>
-        </div>
-      </div>
-
-      <div class="menu-items">
-        <a v-if="!isAuthenticated" class="menu-item" @click.prevent="showLoginForm = true">
-          <span class="item-icon">🔑</span> GitHub 登录
-        </a>
-        <a v-else class="menu-item" @click.prevent="logout">
-          <span class="item-icon">🚪</span> 退出登录
-        </a>
-        
-        <a class="menu-item" :href="repoUrl" target="_blank">
-          <span class="item-icon">📂</span> 查看仓库
-        </a>
-
-        <a v-if="isAuthenticated" class="menu-item" @click.prevent="syncWithGitHub">
-          <span class="item-icon">🔄</span> 同步更改
-        </a>
-      </div>
-    </div>
-
+    
+    <!-- 新建文件按钮 -->
+    <button class="nav-action-button" @click="createNewFile" title="新建文件" v-if="!isHomePage && isAuthenticated">
+      新建文件
+    </button>
+    
+    <!-- 新建文件夹按钮 -->
+    <button class="nav-action-button" @click="createNewFolder" title="新建文件夹" v-if="!isHomePage && isAuthenticated">
+      新建文件夹
+    </button>
+    
+    <!-- 同步按钮 -->
+    <button class="nav-action-button sync-button" @click="syncWithGitHub" title="同步更改" v-if="isAuthenticated">
+      同步
+    </button>
+    
     <!-- GitHub 登录表单 -->
     <div class="modal" v-if="showLoginForm">
       <div class="modal-content">
@@ -77,39 +64,28 @@
 
 <script setup>
 import { ref, computed, onMounted, inject } from 'vue';
+import { useData, useRoute } from 'vitepress';
 
 // 注入服务
 const githubService = inject('githubService');
 
 // 状态变量
-const showMenu = ref(false);
 const showLoginForm = ref(false);
 const isAuthenticated = ref(false);
 const githubUsername = ref('');
 const githubRepo = ref('');
 const githubToken = ref('');
 
-// 切换菜单显示状态
-function toggleMenu() {
-  showMenu.value = !showMenu.value;
-}
+// 获取当前页面数据
+const { page, frontmatter } = useData();
+const route = useRoute();
 
-// 处理鼠标离开
-function handleMouseLeave() {
-  // 给一个短暂的延时，避免菜单闪烁
-  setTimeout(() => {
-    if (!document.querySelector('.dropdown-menu:hover')) {
-      showMenu.value = false;
-    }
-  }, 100);
-}
-
-// 仓库 URL
-const repoUrl = computed(() => {
-  if (githubUsername.value && githubRepo.value) {
-    return `https://github.com/${githubUsername.value}/${githubRepo.value}`;
-  }
-  return '#';
+// 判断当前是否是首页
+const isHomePage = computed(() => {
+  return page.value.relativePath === 'index.md' || 
+         frontmatter.value.layout === 'home' ||
+         route.path === '/' || 
+         route.path === '/index.html';
 });
 
 // 登录方法
@@ -164,11 +140,26 @@ async function syncWithGitHub() {
   try {
     // 触发同步事件
     document.dispatchEvent(new CustomEvent('webnote:sync'));
-    showMenu.value = false;
   } catch (error) {
     console.error('同步失败:', error);
     alert('同步失败，请稍后再试');
   }
+}
+
+// 创建新文件
+function createNewFile() {
+  document.dispatchEvent(new CustomEvent('webnote:create-file', { 
+    detail: { parentPath: 'docs' },
+    bubbles: true
+  }));
+}
+
+// 创建新文件夹
+function createNewFolder() {
+  document.dispatchEvent(new CustomEvent('webnote:create-folder', { 
+    detail: { parentPath: 'docs' },
+    bubbles: true
+  }));
 }
 
 // 初始化
@@ -184,110 +175,45 @@ onMounted(async () => {
 </script>
 
 <style>
-.github-user-menu {
-  position: relative;
+.nav-actions {
   display: flex;
   align-items: center;
-  height: 100%;
-  padding: 0 12px;
-  cursor: pointer;
-  z-index: 999; /* 确保高于其他元素 */
+  gap: 8px;
 }
 
-.menu-icon {
+.nav-action-button {
   display: flex;
   align-items: center;
-  justify-content: center;
-  color: var(--vp-c-text-2);
-  transition: color 0.2s;
-  cursor: pointer;
-  position: relative;
-  z-index: 1000; /* 确保始终可点击 */
-  background-color: transparent;
+  padding: 6px 12px;
   border-radius: 4px;
-  padding: 4px;
-}
-
-.github-user-menu:hover .menu-icon {
-  color: var(--vp-c-brand);
-}
-
-/* 汉堡图标样式 */
-.hamburger-icon {
-  width: 24px;
-  height: 24px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  padding: 5px;
-}
-
-.hamburger-icon span {
-  display: block;
-  height: 2px;
-  width: 100%;
-  background-color: currentColor;
-  transition: all 0.3s ease;
-  border-radius: 2px;
-}
-
-.dropdown-menu {
-  position: absolute;
-  top: 100%;
-  right: 0;
-  min-width: 200px;
-  background-color: var(--vp-c-bg);
   border: 1px solid var(--vp-c-divider);
-  border-radius: 4px;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
-  z-index: 1001; /* 确保高于其他元素 */
-  overflow: hidden;
-  margin-top: 4px;
-  visibility: visible;
-  opacity: 1;
-  transition: opacity 0.2s, visibility 0.2s;
-  display: block; /* 强制显示 */
-}
-
-.menu-header {
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--vp-c-divider);
   background-color: var(--vp-c-bg-soft);
-}
-
-.user-info .username {
-  font-weight: bold;
   color: var(--vp-c-text-1);
-}
-
-.user-info .repo {
-  font-size: 12px;
-  color: var(--vp-c-text-2);
-}
-
-.menu-items {
-  padding: 8px 0;
-}
-
-.menu-item {
-  display: flex;
-  align-items: center;
-  padding: 8px 16px;
-  color: var(--vp-c-text-1);
-  text-decoration: none;
   cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.menu-item:hover {
-  background-color: var(--vp-c-bg-soft);
-}
-
-.item-icon {
-  margin-right: 8px;
   font-size: 14px;
+  transition: all 0.2s;
+  white-space: nowrap;
 }
 
+.nav-action-button:hover {
+  background-color: var(--vp-c-bg-mute);
+  color: var(--vp-c-brand);
+  border-color: var(--vp-c-brand-soft);
+}
+
+.login-button {
+  background-color: var(--vp-c-brand-soft);
+  color: var(--vp-c-brand-dark);
+  border-color: var(--vp-c-brand-soft);
+}
+
+.login-button:hover {
+  background-color: var(--vp-c-brand);
+  color: white;
+  border-color: var(--vp-c-brand);
+}
+
+/* 模态框样式 */
 .modal {
   position: fixed;
   top: 0;
@@ -366,20 +292,63 @@ onMounted(async () => {
   cursor: pointer;
 }
 
-/* 暗黑模式适配 */
-.dark .menu-icon {
+/* 用户信息和操作按钮样式 */
+.logout-button {
+  background-color: var(--vp-c-danger-soft);
+  color: var(--vp-c-danger-dark);
+  border-color: var(--vp-c-danger-soft);
+  padding: 2px 8px;
+  font-size: 12px;
+}
+
+.logout-button:hover {
+  background-color: var(--vp-c-danger);
+  color: white;
+  border-color: var(--vp-c-danger);
+}
+
+.sync-button {
+  background-color: var(--vp-c-green-soft);
+  color: var(--vp-c-green-dark);
+  border-color: var(--vp-c-green-soft);
+}
+
+.sync-button:hover {
+  background-color: var(--vp-c-green);
+  color: white;
+  border-color: var(--vp-c-green);
+}
+
+.user-info-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px;
+  background-color: var(--vp-c-bg-soft);
+  border-radius: 4px;
+  border: 1px solid var(--vp-c-divider);
+}
+
+.username {
+  font-size: 14px;
+  font-weight: 500;
   color: var(--vp-c-text-1);
 }
 
 /* 响应式适配 */
 @media (max-width: 768px) {
-  .dropdown-menu {
-    width: 250px;
-    right: -75px;
+  .nav-actions {
+    gap: 4px;
   }
   
-  .dropdown-menu::after {
-    right: 90px;
+  .nav-action-button {
+    padding: 6px 8px;
+    font-size: 12px;
+  }
+  
+  .modal-content {
+    width: 95%;
+    padding: 16px;
   }
 }
 </style>
