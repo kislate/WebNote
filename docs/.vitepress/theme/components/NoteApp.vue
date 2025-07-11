@@ -98,14 +98,92 @@ function handleCreateNote() {
       bubbles: true 
     }));
     
-    setTimeout(() => {
-      noteManager.value.createNewNote();
-    }, 50);
+    noteManager.value.createNewNote();
   } else {
     document.dispatchEvent(new CustomEvent('webnote:debug', { 
-      detail: `警告: 无法获取noteManager引用`,
+      detail: `警告: 无法获取noteManager引用，尝试延迟创建...`,
       bubbles: true 
     }));
+    
+    setTimeout(() => {
+      if (noteManager.value) {
+        noteManager.value.createNewNote();
+      }
+    }, 500);
+  }
+}
+
+// 处理创建文件事件
+function handleCreateFile(event) {
+  document.dispatchEvent(new CustomEvent('webnote:debug', { 
+    detail: `收到创建文件事件: ${JSON.stringify(event.detail)}`,
+    bubbles: true 
+  }));
+  
+  // 激活编辑器
+  activateEditor('');
+  
+  // 如果请求显示表单，则调用笔记管理器的createNewNote方法
+  if (noteManager.value) {
+    document.dispatchEvent(new CustomEvent('webnote:debug', { 
+      detail: `NoteManager已准备好，准备创建文件...`,
+      bubbles: true 
+    }));
+    
+    // 延迟一下确保编辑器已完全加载
+    setTimeout(() => {
+      if (event.detail?.showForm) {
+        noteManager.value.createNewNote();
+      }
+    }, 100);
+  } else {
+    document.dispatchEvent(new CustomEvent('webnote:debug', { 
+      detail: `警告: 无法获取noteManager引用，尝试延迟创建...`,
+      bubbles: true 
+    }));
+    
+    setTimeout(() => {
+      if (noteManager.value && event.detail?.showForm) {
+        noteManager.value.createNewNote();
+      }
+    }, 500);
+  }
+}
+
+// 处理创建文件夹事件
+function handleCreateFolder(event) {
+  document.dispatchEvent(new CustomEvent('webnote:debug', { 
+    detail: `收到创建文件夹事件: ${JSON.stringify(event.detail)}`,
+    bubbles: true 
+  }));
+  
+  // 激活编辑器
+  activateEditor('');
+  
+  // 如果请求显示表单，则调用笔记管理器的createNewFolder方法
+  if (noteManager.value) {
+    document.dispatchEvent(new CustomEvent('webnote:debug', { 
+      detail: `NoteManager已准备好，准备创建文件夹...`,
+      bubbles: true 
+    }));
+    
+    // 延迟一下确保编辑器已完全加载
+    setTimeout(() => {
+      if (event.detail?.showForm) {
+        noteManager.value.createNewFolder();
+      }
+    }, 100);
+  } else {
+    document.dispatchEvent(new CustomEvent('webnote:debug', { 
+      detail: `警告: 无法获取noteManager引用，尝试延迟创建...`,
+      bubbles: true 
+    }));
+    
+    setTimeout(() => {
+      if (noteManager.value && event.detail?.showForm) {
+        noteManager.value.createNewFolder();
+      }
+    }, 500);
   }
 }
 
@@ -179,6 +257,8 @@ onMounted(() => {
   // 监听自定义事件
   document.addEventListener('webnote:edit-note', handleEditNote);
   document.addEventListener('webnote:create-note', handleCreateNote);
+  document.addEventListener('webnote:create-file', handleCreateFile);
+  document.addEventListener('webnote:create-folder', handleCreateFolder);
   document.addEventListener('webnote:exit-editor', (event) => deactivateEditor(event.detail));
   
   // 监听调试事件
@@ -209,6 +289,8 @@ onMounted(() => {
 onBeforeUnmount(() => {
   document.removeEventListener('webnote:edit-note', handleEditNote);
   document.removeEventListener('webnote:create-note', handleCreateNote);
+  document.removeEventListener('webnote:create-file', handleCreateFile);
+  document.removeEventListener('webnote:create-folder', handleCreateFolder);
   document.removeEventListener('webnote:exit-editor', deactivateEditor);
 });
 </script>

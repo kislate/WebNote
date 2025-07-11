@@ -530,21 +530,81 @@ function emitExitEditor(savedPath = null) {
 
 // 保存笔记
 async function saveNote() {
+  // 记录调试信息
+  document.dispatchEvent(new CustomEvent('webnote:debug', { 
+    detail: `准备保存笔记: ${currentPath.value}\n是否为新建: ${isCreatingNew.value}\n是否已登录: ${isAuthenticated.value}`,
+    bubbles: true 
+  }));
+  
   // 首先保存到本地草稿
-  await storageService.saveDraft(currentPath.value, noteContent.value);
+  const localSaved = await storageService.saveDraft(currentPath.value, noteContent.value);
+  
+  if (localSaved) {
+    document.dispatchEvent(new CustomEvent('webnote:debug', { 
+      detail: `本地草稿保存成功: ${currentPath.value} (${noteContent.value.length}字符)`,
+      bubbles: true 
+    }));
+  } else {
+    document.dispatchEvent(new CustomEvent('webnote:debug', { 
+      detail: `本地草稿保存失败: ${currentPath.value}`,
+      bubbles: true 
+    }));
+  }
   
   // 如果已登录 GitHub，显示提交表单
   if (isAuthenticated.value) {
-    commitMessage.value = isCreatingNew.value 
-      ? `创建笔记: ${currentPath.value.split('/').pop()}`
-      : `更新笔记: ${currentPath.value.split('/').pop()}`;
-    
-    showCommitForm.value = true;
+    try {
+      // 验证GitHub凭据是否有效
+      const credentials = await githubService.getGitHubCredentials();
+      if (!credentials.isAuthenticated) {
+        throw new Error('GitHub登录失效');
+      }
+      
+      // 设置提交信息并显示表单
+      commitMessage.value = isCreatingNew.value 
+        ? `创建笔记: ${currentPath.value.split('/').pop()}`
+        : `更新笔记: ${currentPath.value.split('/').pop()}`;
+      
+      showCommitForm.value = true;
+      
+      document.dispatchEvent(new CustomEvent('webnote:debug', { 
+        detail: `显示GitHub提交表单，提交信息: ${commitMessage.value}`,
+        bubbles: true 
+      }));
+    } catch (error) {
+      document.dispatchEvent(new CustomEvent('webnote:debug', { 
+        detail: `GitHub验证失败: ${error.message}\n无法提交到GitHub`,
+        bubbles: true 
+      }));
+      
+      // 提示用户重新登录
+      if (confirm('GitHub登录已失效，是否重新登录？')) {
+        document.dispatchEvent(new CustomEvent('webnote:login-required', {
+          bubbles: true
+        }));
+      } else {
+        // 仅保存到本地
+        alert('笔记已保存到本地草稿箱');
+        if (!isCreatingNew.value) {
+          isEditing.value = false;
+        }
+      }
+    }
   } else {
     // 未登录，只保存草稿
-    alert('笔记已保存到本地草稿箱');
-    if (!isCreatingNew.value) {
-      isEditing.value = false;
+    if (isCreatingNew.value) {
+      // 新建文件需要GitHub登录
+      if (confirm('创建新文件需要登录GitHub，是否立即登录？')) {
+        document.dispatchEvent(new CustomEvent('webnote:login-required', {
+          bubbles: true
+        }));
+        return;
+      }
+    } else {
+      alert('笔记已保存到本地草稿箱');
+      if (!isCreatingNew.value) {
+        isEditing.value = false;
+      }
     }
   }
   
@@ -557,14 +617,76 @@ async function confirmCommit() {
   if (!isAuthenticated.value) {
     alert('请先登录 GitHub');
     showCommitForm.value = false;
+    document.dispatchEvent(new CustomEvent('webnote:login-required', {
+      bubbles: true
+    }));
     return;
   }
   
   try {
     showCommitForm.value = false;
+    document.dispatchEvent(new CustomEvent('webnote:debug', { 
+      detail: `准备提交到GitHub: ${currentPath.value}\n提交信息: ${commitMessage.value}`,
+      bubbles: true 
+    }));
+    
+    // 先验证GitHub凭据
+    const credentials = await githubService.getGitHubCredentials();
+    if (!credentials.isAuthenticated) {
+      throw new Error('GitHub凭据无效');
+    }
+    
+    // 验证API连接
+    try {
+      const octokit = await githubService.getOctokit();
+      await octokit.repos.get({
+        owner: credentials.username,
+        repo: credentials.repo
+      });
+    } catch (apiError) {
+      document.dispatchEvent(new CustomEvent('webnote:debug', { 
+        detail: `GitHub API连接失败: ${apiError.message}`,
+        bubbles: true 
+      }));
+      throw new Error('无法连接GitHub API，请检查网络连接和凭据');
+    }
     
     // 提交到 GitHub
     const sha = isCreatingNew.value ? null : await getFileSha();
+    document.dispatchEvent(new CustomEvent('webnote:debug', { 
+      detail: `文件SHA: ${sha || '新文件，无SHA'}`,
+      bubbles: true 
+    }));
+    
+    // 如果是编辑现有文件，先检查是否有冲突
+    if (!isCreatingNew.value && sha) {
+      try {
+        const latestFile = await githubService.getFileContent(currentPath.value);
+        if (latestFile.sha !== sha) {
+          document.dispatchEvent(new CustomEvent('webnote:debug', { 
+            detail: `检测到SHA不匹配，可能存在文件冲突:\n本地: ${sha}\n远程: ${latestFile.sha}`,
+            bubbles: true 
+          }));
+          
+          if (confirm('检测到文件在远程可能已被修改，继续提交可能会覆盖其他更改。是否继续？')) {
+            // 使用最新的SHA
+            document.dispatchEvent(new CustomEvent('webnote:debug', { 
+              detail: `用户选择继续提交，使用最新SHA: ${latestFile.sha}`,
+              bubbles: true 
+            }));
+          } else {
+            throw new Error('用户取消了提交以避免冲突');
+          }
+        }
+      } catch (shaError) {
+        // 如果获取SHA失败，记录错误但继续提交
+        document.dispatchEvent(new CustomEvent('webnote:debug', { 
+          detail: `获取最新SHA时出错: ${shaError.message}，尝试使用本地SHA继续提交`,
+          bubbles: true 
+        }));
+      }
+    }
+    
     await githubService.createOrUpdateFile(
       currentPath.value,
       noteContent.value,
@@ -670,6 +792,33 @@ async function confirmCreateNote() {
   }
   fullPath += filename + '.md';
   
+  document.dispatchEvent(new CustomEvent('webnote:debug', { 
+    detail: `准备创建新笔记: ${fullPath}`,
+    bubbles: true 
+  }));
+  
+  // 验证路径是否已存在
+  if (isAuthenticated.value) {
+    try {
+      const exists = await githubService.fileExists(fullPath);
+      if (exists) {
+        if (!confirm(`文件 ${fullPath} 已存在，是否覆盖？`)) {
+          document.dispatchEvent(new CustomEvent('webnote:debug', { 
+            detail: `用户取消了创建，文件已存在`,
+            bubbles: true 
+          }));
+          return;
+        }
+      }
+    } catch (error) {
+      document.dispatchEvent(new CustomEvent('webnote:debug', { 
+        detail: `检查文件是否存在时出错: ${error.message}`,
+        bubbles: true 
+      }));
+      // 继续创建，可能是网络错误或权限问题
+    }
+  }
+  
   // 生成笔记内容
   let content = '';
   switch (selectedTemplate.value) {
@@ -696,6 +845,36 @@ async function confirmCreateNote() {
   isCreatingNew.value = true;
   isEditing.value = true;
   showBackButton.value = true;
+  
+  // 先保存到本地草稿
+  await storageService.saveDraft(fullPath, content, true);
+  
+  document.dispatchEvent(new CustomEvent('webnote:debug', { 
+    detail: `新笔记创建成功: ${fullPath}\n标题: ${newNoteTitle.value}\n模板: ${selectedTemplate.value}\n内容长度: ${content.length}字符\n已保存到本地草稿`,
+    bubbles: true 
+  }));
+  
+  // 触发刷新事件，更新侧边栏和内容区
+  document.dispatchEvent(new CustomEvent('webnote:refresh', {
+    detail: { 
+      type: 'file', 
+      path: fullPath, 
+      isNew: true,
+      content: content
+    },
+    bubbles: true
+  }));
+  
+  // 提示用户如何保存到GitHub
+  if (isAuthenticated.value) {
+    setSyncStatus('点击保存按钮以提交到GitHub', 'info', '💾', true);
+  } else {
+    if (confirm('您尚未登录GitHub，新笔记将只保存在本地。是否现在登录？')) {
+      document.dispatchEvent(new CustomEvent('webnote:login-required', {
+        bubbles: true
+      }));
+    }
+  }
 }
 
 // 新建文件夹
@@ -709,7 +888,14 @@ function createNewFolder() {
 // 确认创建文件夹
 async function confirmCreateFolder() {
   if (!isAuthenticated.value) {
-    alert('请先登录 GitHub 以创建文件夹');
+    // 弹出GitHub登录表单
+    document.dispatchEvent(new CustomEvent('webnote:login-required', {
+      bubbles: true
+    }));
+    document.dispatchEvent(new CustomEvent('webnote:debug', { 
+      detail: '需要GitHub登录才能创建文件夹，已触发登录表单',
+      bubbles: true 
+    }));
     return;
   }
   
@@ -721,6 +907,11 @@ async function confirmCreateFolder() {
   folderPath += newFolderName.value.replace(/\s+/g, '-').toLowerCase() + '/';
   
   try {
+    document.dispatchEvent(new CustomEvent('webnote:debug', { 
+      detail: `正在创建文件夹: ${folderPath}`,
+      bubbles: true 
+    }));
+    
     // 创建文件夹
     await githubService.createFolder(folderPath, `创建文件夹: ${newFolderName.value}`);
     
@@ -729,8 +920,24 @@ async function confirmCreateFolder() {
     
     // 显示成功消息
     alert(`文件夹 ${newFolderName.value} 已成功创建`);
+    
+    // 触发刷新事件，通知系统刷新侧边栏和内容区
+    document.dispatchEvent(new CustomEvent('webnote:refresh', {
+      detail: { type: 'folder', path: folderPath },
+      bubbles: true
+    }));
+    
+    // 记录调试信息
+    document.dispatchEvent(new CustomEvent('webnote:debug', { 
+      detail: `文件夹创建成功: ${folderPath}\n已触发刷新事件`,
+      bubbles: true 
+    }));
   } catch (error) {
     console.error('创建文件夹失败:', error);
+    document.dispatchEvent(new CustomEvent('webnote:debug', { 
+      detail: `创建文件夹失败: ${error.message}`,
+      bubbles: true 
+    }));
     alert('创建文件夹失败，请重试');
   }
 }
@@ -972,43 +1179,155 @@ async function loadFileContent(path, debug = true) {
           bubbles: true 
         }));
         
-        // 尝试从页面获取内容 - 使用rawContent而不是html
-        // 先尝试获取原始markdown内容
-        try {
-          const rawPath = path.replace(/^docs\//, '');
-          const url = new URL(rawPath, window.location.origin + '/');
-          
-          console.log("尝试获取原始Markdown文件:", url.toString());
+        // 检查是否是401/403错误（登录失效）
+        if (error.status === 401 || error.status === 403) {
           document.dispatchEvent(new CustomEvent('webnote:debug', { 
-            detail: `尝试获取原始文件: ${url.toString()}`,
+            detail: `GitHub登录失效，需要重新登录。状态码: ${error.status}`,
             bubbles: true 
           }));
           
-          const response = await fetch(url.toString());
+          // 标记登录状态为失效
+          isAuthenticated.value = false;
+          await githubService.clearGitHubCredentials();
+          
+          // 清除会话存储
+          sessionStorage.removeItem('github_authenticated');
+          sessionStorage.removeItem('github_username');
+          sessionStorage.removeItem('github_repo');
+          sessionStorage.removeItem('github_last_verified');
+          
+          // 提示用户重新登录
+          const needLogin = confirm('GitHub登录已失效，是否立即重新登录？如果选择"取消"，将尝试从本地获取文件内容。');
+          if (needLogin) {
+            // 触发登录事件
+            document.dispatchEvent(new CustomEvent('webnote:login-required', {
+              bubbles: true
+            }));
+            
+            // 注册一个一次性事件监听器，等待登录成功后重新加载内容
+            const loginSuccessListener = function(e) {
+              document.dispatchEvent(new CustomEvent('webnote:debug', { 
+                detail: `检测到登录成功，重新加载文件: ${path}`,
+                bubbles: true 
+              }));
+              loadFileContent(path, debug);
+              document.removeEventListener('webnote:login-success', loginSuccessListener);
+            };
+            
+            document.addEventListener('webnote:login-success', loginSuccessListener);
+            
+            // 暂停处理，等待登录
+            return;
+          }
+          
+          // 如果用户选择不登录，继续尝试加载本地文件
+          document.dispatchEvent(new CustomEvent('webnote:debug', { 
+            detail: `用户选择不重新登录，尝试获取本地文件内容...`,
+            bubbles: true 
+          }));
+        }
+        
+        // 尝试从多个来源获取原始Markdown内容
+        try {
+          const rawPath = path.replace(/^docs\//, '');
+          
+          // 尝试方式1: 直接获取原始URL
+          const url1 = new URL(rawPath, window.location.origin + '/');
+          
+          console.log("尝试获取原始Markdown文件 (方式1):", url1.toString());
+          document.dispatchEvent(new CustomEvent('webnote:debug', { 
+            detail: `尝试获取原始文件 (方式1): ${url1.toString()}`,
+            bubbles: true 
+          }));
+          
+          let response = await fetch(url1.toString());
           if (response.ok) {
             const content = await response.text();
             
-            console.log("原始文件获取成功", { length: content.length });
+            console.log("原始文件获取成功 (方式1)", { length: content.length });
             document.dispatchEvent(new CustomEvent('webnote:debug', { 
-              detail: `原始文件获取成功 (${content.length} 字符)`,
+              detail: `原始文件获取成功 (方式1) (${content.length} 字符)`,
               bubbles: true 
             }));
             
             noteContent.value = content;
             originalContent.value = content;
-          } else {
-            console.log("原始文件获取失败，状态码:", response.status);
+            return;  // 成功获取，直接返回
+          } 
+          
+          // 尝试方式2: 添加.md后缀
+          const url2 = new URL(rawPath + '.md', window.location.origin + '/');
+          
+          console.log("尝试获取原始Markdown文件 (方式2):", url2.toString());
+          document.dispatchEvent(new CustomEvent('webnote:debug', { 
+            detail: `尝试获取原始文件 (方式2): ${url2.toString()}`,
+            bubbles: true 
+          }));
+          
+          response = await fetch(url2.toString());
+          if (response.ok) {
+            const content = await response.text();
+            
+            console.log("原始文件获取成功 (方式2)", { length: content.length });
             document.dispatchEvent(new CustomEvent('webnote:debug', { 
-              detail: `原始文件获取失败，状态码: ${response.status}\n使用页面内容...`,
+              detail: `原始文件获取成功 (方式2) (${content.length} 字符)`,
               bubbles: true 
             }));
             
-            // 降级为HTML内容
-            noteContent.value = page.value.content || '';
-            originalContent.value = noteContent.value;
-            
-            console.log("使用页面内容", { length: noteContent.value.length });
+            noteContent.value = content;
+            originalContent.value = content;
+            return;  // 成功获取，直接返回
           }
+          
+          // 尝试方式3: 尝试从源代码仓库获取
+          const url3 = new URL(`https://raw.githubusercontent.com/${githubUsername.value}/${githubRepo.value}/main/${path}`);
+          
+          console.log("尝试从GitHub源码获取Markdown文件 (方式3):", url3.toString());
+          document.dispatchEvent(new CustomEvent('webnote:debug', { 
+            detail: `尝试从GitHub源码获取 (方式3): ${url3.toString()}`,
+            bubbles: true 
+          }));
+          
+          try {
+            response = await fetch(url3.toString());
+            if (response.ok) {
+              const content = await response.text();
+              
+              console.log("从GitHub源码获取成功 (方式3)", { length: content.length });
+              document.dispatchEvent(new CustomEvent('webnote:debug', { 
+                detail: `从GitHub源码获取成功 (方式3) (${content.length} 字符)`,
+                bubbles: true 
+              }));
+              
+              noteContent.value = content;
+              originalContent.value = content;
+              return;  // 成功获取，直接返回
+            }
+          } catch (ghError) {
+            console.log("GitHub源码获取失败:", ghError.message);
+            document.dispatchEvent(new CustomEvent('webnote:debug', { 
+              detail: `GitHub源码获取失败: ${ghError.message}`,
+              bubbles: true 
+            }));
+            // 忽略错误，继续尝试
+          }
+          
+          // 所有方法都失败，使用页面内容
+          console.log("所有获取方法失败，使用页面内容");
+          document.dispatchEvent(new CustomEvent('webnote:debug', { 
+            detail: `所有原始文件获取方法失败，降级使用页面内容...`,
+            bubbles: true 
+          }));
+          
+          // 降级为HTML内容
+          noteContent.value = page.value.content || '';
+          originalContent.value = noteContent.value;
+          
+          console.log("使用页面内容", { length: noteContent.value.length });
+          document.dispatchEvent(new CustomEvent('webnote:debug', { 
+            detail: `已使用页面内容 (${noteContent.value.length} 字符)`,
+            bubbles: true 
+          }));
         } catch (fetchError) {
           console.error("获取原始内容失败:", fetchError);
           document.dispatchEvent(new CustomEvent('webnote:debug', { 
