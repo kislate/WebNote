@@ -36,31 +36,76 @@ function handleEditNote(event) {
   const path = event.detail || `docs/${page.value.relativePath}`;
   console.log("编辑笔记:", path);
   
+  // 显示调试信息
+  document.dispatchEvent(new CustomEvent('webnote:debug', { 
+    detail: `收到编辑事件: ${path}`,
+    bubbles: true 
+  }));
+  
   // 先激活编辑器
   activateEditor(path);
   
-  // 然后立即加载文件内容并进入编辑模式
+  // 确保编辑器立即加载内容
   if (noteManager.value) {
-    console.log("调用loadFileContent");
-    // 使用更短的延时确保快速响应
-    setTimeout(() => {
-      noteManager.value.loadFileContent(path);
-    }, 10);
+    console.log("立即调用loadFileContent");
+    document.dispatchEvent(new CustomEvent('webnote:debug', { 
+      detail: `NoteManager已准备好，开始加载内容...`,
+      bubbles: true 
+    }));
+    
+    // 直接同步调用，不使用延时
+    noteManager.value.loadFileContent(path);
   } else {
     console.warn("无法获取noteManager引用");
+    document.dispatchEvent(new CustomEvent('webnote:debug', { 
+      detail: `警告: 无法获取noteManager引用，尝试延迟加载...`,
+      bubbles: true 
+    }));
+    
+    // 确保在组件挂载后仍然能访问
+    setTimeout(() => {
+      if (noteManager.value) {
+        document.dispatchEvent(new CustomEvent('webnote:debug', { 
+          detail: `延迟后NoteManager已就绪，开始加载内容...`,
+          bubbles: true 
+        }));
+        noteManager.value.loadFileContent(path);
+      } else {
+        document.dispatchEvent(new CustomEvent('webnote:debug', { 
+          detail: `错误: 延迟后仍无法获取noteManager引用`,
+          bubbles: true 
+        }));
+      }
+    }, 500); // 延长等待时间
   }
 }
 
 // 处理创建笔记事件
 function handleCreateNote() {
+  // 显示调试信息
+  document.dispatchEvent(new CustomEvent('webnote:debug', { 
+    detail: `收到创建笔记事件`,
+    bubbles: true 
+  }));
+  
   // 笔记管理器将处理创建笔记的逻辑
   activateEditor('');
   
   // 立即调用创建笔记方法
   if (noteManager.value) {
+    document.dispatchEvent(new CustomEvent('webnote:debug', { 
+      detail: `NoteManager已准备好，准备创建笔记...`,
+      bubbles: true 
+    }));
+    
     setTimeout(() => {
       noteManager.value.createNewNote();
     }, 50);
+  } else {
+    document.dispatchEvent(new CustomEvent('webnote:debug', { 
+      detail: `警告: 无法获取noteManager引用`,
+      bubbles: true 
+    }));
   }
 }
 
@@ -136,10 +181,25 @@ onMounted(() => {
   document.addEventListener('webnote:create-note', handleCreateNote);
   document.addEventListener('webnote:exit-editor', (event) => deactivateEditor(event.detail));
   
+  // 监听调试事件
+  document.addEventListener('webnote:debug', (event) => {
+    console.log('NoteApp 调试信息:', event.detail);
+  });
+  
+  // 发送初始化就绪消息
+  document.dispatchEvent(new CustomEvent('webnote:debug', { 
+    detail: 'NoteApp 已初始化完成',
+    bubbles: true 
+  }));
+  
   // 检查 URL 参数，如果有 edit=true，则自动进入编辑模式
   if (typeof window !== 'undefined') {
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('edit') === 'true') {
+      document.dispatchEvent(new CustomEvent('webnote:debug', { 
+        detail: '检测到编辑参数，自动进入编辑模式',
+        bubbles: true 
+      }));
       activateEditor(`docs/${page.value.relativePath}`);
     }
   }

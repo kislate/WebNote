@@ -915,41 +915,172 @@ watch(() => props.path, (newPath) => {
 });
 
 // 加载文件内容并开始编辑 - 供外部组件调用
-async function loadFileContent(path) {
-  if (!path) return;
+async function loadFileContent(path, debug = true) {
+  if (!path) {
+    console.error("未提供文件路径");
+    document.dispatchEvent(new CustomEvent('webnote:debug', { 
+      detail: `错误: 未提供文件路径`,
+      bubbles: true 
+    }));
+    return;
+  }
   
   try {
-    console.log("直接加载文件内容:", path);
+    console.log("正在加载文件内容:", path);
+    document.dispatchEvent(new CustomEvent('webnote:debug', { 
+      detail: `开始加载文件: ${path}`,
+      bubbles: true 
+    }));
     currentPath.value = path;
     
     // 尝试先从本地草稿获取内容
     const draft = await storageService.getDraft(path);
     
     if (draft && draft.content) {
+      console.log("从本地草稿加载内容", { length: draft.content.length });
+      document.dispatchEvent(new CustomEvent('webnote:debug', { 
+        detail: `从本地草稿加载内容 (${draft.content.length} 字符)`,
+        bubbles: true 
+      }));
+      
       noteContent.value = draft.content;
       originalContent.value = draft.content;
     } else if (isAuthenticated.value) {
       // 从GitHub获取内容
       try {
+        console.log("正在从GitHub加载内容");
+        document.dispatchEvent(new CustomEvent('webnote:debug', { 
+          detail: `尝试从GitHub获取: ${path}`,
+          bubbles: true 
+        }));
+        
         const result = await githubService.getFileContent(path);
+        
+        console.log("GitHub内容加载成功", { length: result.content.length, sha: result.sha });
+        document.dispatchEvent(new CustomEvent('webnote:debug', { 
+          detail: `GitHub加载成功 (${result.content.length} 字符)\nSHA: ${result.sha}`,
+          bubbles: true 
+        }));
+        
         noteContent.value = result.content;
         originalContent.value = result.content;
         currentFileSha.value = result.sha;
       } catch (error) {
         console.error("从GitHub获取内容失败:", error);
-        // 尝试从页面获取内容
-        noteContent.value = page.value.html || '';
-        originalContent.value = noteContent.value;
+        document.dispatchEvent(new CustomEvent('webnote:debug', { 
+          detail: `GitHub加载失败: ${error.message}\n尝试获取原始文件...`,
+          bubbles: true 
+        }));
+        
+        // 尝试从页面获取内容 - 使用rawContent而不是html
+        // 先尝试获取原始markdown内容
+        try {
+          const rawPath = path.replace(/^docs\//, '');
+          const url = new URL(rawPath, window.location.origin + '/');
+          
+          console.log("尝试获取原始Markdown文件:", url.toString());
+          document.dispatchEvent(new CustomEvent('webnote:debug', { 
+            detail: `尝试获取原始文件: ${url.toString()}`,
+            bubbles: true 
+          }));
+          
+          const response = await fetch(url.toString());
+          if (response.ok) {
+            const content = await response.text();
+            
+            console.log("原始文件获取成功", { length: content.length });
+            document.dispatchEvent(new CustomEvent('webnote:debug', { 
+              detail: `原始文件获取成功 (${content.length} 字符)`,
+              bubbles: true 
+            }));
+            
+            noteContent.value = content;
+            originalContent.value = content;
+          } else {
+            console.log("原始文件获取失败，状态码:", response.status);
+            document.dispatchEvent(new CustomEvent('webnote:debug', { 
+              detail: `原始文件获取失败，状态码: ${response.status}\n使用页面内容...`,
+              bubbles: true 
+            }));
+            
+            // 降级为HTML内容
+            noteContent.value = page.value.content || '';
+            originalContent.value = noteContent.value;
+            
+            console.log("使用页面内容", { length: noteContent.value.length });
+          }
+        } catch (fetchError) {
+          console.error("获取原始内容失败:", fetchError);
+          document.dispatchEvent(new CustomEvent('webnote:debug', { 
+            detail: `获取原始内容失败: ${fetchError.message}\n使用页面内容...`,
+            bubbles: true 
+          }));
+          
+          noteContent.value = page.value.content || '';
+          originalContent.value = noteContent.value;
+          
+          console.log("使用页面内容", { length: noteContent.value.length });
+        }
       }
     } else {
-      // 未登录时使用页面内容
-      noteContent.value = page.value.html || '';
-      originalContent.value = noteContent.value;
+      // 未登录时尝试获取原始Markdown内容
+      try {
+        const rawPath = path.replace(/^docs\//, '');
+        const url = new URL(rawPath, window.location.origin + '/');
+        
+        console.log("未登录，尝试获取原始文件:", url.toString());
+        document.dispatchEvent(new CustomEvent('webnote:debug', { 
+          detail: `未登录，尝试获取原始文件: ${url.toString()}`,
+          bubbles: true 
+        }));
+        
+        const response = await fetch(url.toString());
+        if (response.ok) {
+          const content = await response.text();
+          
+          console.log("原始文件获取成功", { length: content.length });
+          document.dispatchEvent(new CustomEvent('webnote:debug', { 
+            detail: `原始文件获取成功 (${content.length} 字符)`,
+            bubbles: true 
+          }));
+          
+          noteContent.value = content;
+          originalContent.value = content;
+        } else {
+          console.log("原始文件获取失败，状态码:", response.status);
+          document.dispatchEvent(new CustomEvent('webnote:debug', { 
+            detail: `原始文件获取失败，状态码: ${response.status}\n使用页面内容...`,
+            bubbles: true 
+          }));
+          
+          // 降级为页面内容
+          noteContent.value = page.value.content || '';
+          originalContent.value = noteContent.value;
+          
+          console.log("使用页面内容", { length: noteContent.value.length });
+        }
+      } catch (error) {
+        console.error("获取原始内容失败:", error);
+        document.dispatchEvent(new CustomEvent('webnote:debug', { 
+          detail: `获取原始内容失败: ${error.message}\n使用页面内容...`,
+          bubbles: true 
+        }));
+        
+        noteContent.value = page.value.content || '';
+        originalContent.value = noteContent.value;
+        
+        console.log("使用页面内容", { length: noteContent.value.length });
+      }
     }
     
     // 强制进入编辑模式
     isEditing.value = true;
     isCreatingNew.value = false;
+    
+    document.dispatchEvent(new CustomEvent('webnote:debug', { 
+      detail: `已进入编辑模式`,
+      bubbles: true 
+    }));
     
     // 添加到最近文件
     await storageService.addToRecentFiles({
@@ -959,8 +1090,17 @@ async function loadFileContent(path) {
     
     // 更新最近文件列表
     await loadRecentFiles();
+    
+    document.dispatchEvent(new CustomEvent('webnote:debug', { 
+      detail: `文件加载完成`,
+      bubbles: true 
+    }));
   } catch (error) {
     console.error("加载文件内容失败:", error);
+    document.dispatchEvent(new CustomEvent('webnote:debug', { 
+      detail: `加载文件失败: ${error.message}`,
+      bubbles: true 
+    }));
     alert("无法加载文件内容，请稍后再试");
   }
 }
@@ -974,28 +1114,92 @@ defineExpose({
 
 // 右键菜单 - 创建文件事件处理
 function handleCreateFileEvent(event) {
-  const { parentPath } = event.detail || {};
+  const { parentPath, debug } = event.detail || {};
+  
+  console.log('收到创建文件事件', event.detail);
+  
+  if (debug) {
+    // 发送调试信息
+    document.dispatchEvent(new CustomEvent('webnote:debug', { 
+      detail: `收到创建文件事件: parentPath=${parentPath || 'docs'}`,
+      bubbles: true 
+    }));
+  }
   
   // 设置新笔记的父路径
   if (parentPath) {
     newNotePath.value = parentPath.replace(/^docs\//, '');
   }
   
+  // 激活编辑器模式（如果尚未激活）
+  if (!isEditing.value) {
+    isEditing.value = true;
+    
+    // 发送调试信息
+    if (debug) {
+      document.dispatchEvent(new CustomEvent('webnote:debug', { 
+        detail: '激活编辑器模式',
+        bubbles: true 
+      }));
+    }
+  }
+  
   // 显示新建笔记表单
-  showNewNoteForm.value = true;
+  setTimeout(() => {
+    showNewNoteForm.value = true;
+    
+    if (debug) {
+      document.dispatchEvent(new CustomEvent('webnote:debug', { 
+        detail: '显示新建文件表单',
+        bubbles: true 
+      }));
+    }
+  }, 100);
 }
 
 // 右键菜单 - 创建文件夹事件处理
 function handleCreateFolderEvent(event) {
-  const { parentPath } = event.detail || {};
+  const { parentPath, debug } = event.detail || {};
+  
+  console.log('收到创建文件夹事件', event.detail);
+  
+  if (debug) {
+    // 发送调试信息
+    document.dispatchEvent(new CustomEvent('webnote:debug', { 
+      detail: `收到创建文件夹事件: parentPath=${parentPath || 'docs'}`,
+      bubbles: true 
+    }));
+  }
   
   // 设置新文件夹的父路径
   if (parentPath) {
     newFolderPath.value = parentPath.replace(/^docs\//, '');
   }
   
+  // 激活编辑器模式（如果尚未激活）
+  if (!isEditing.value) {
+    isEditing.value = true;
+    
+    // 发送调试信息
+    if (debug) {
+      document.dispatchEvent(new CustomEvent('webnote:debug', { 
+        detail: '激活编辑器模式',
+        bubbles: true 
+      }));
+    }
+  }
+  
   // 显示新建文件夹表单
-  showNewFolderForm.value = true;
+  setTimeout(() => {
+    showNewFolderForm.value = true;
+    
+    if (debug) {
+      document.dispatchEvent(new CustomEvent('webnote:debug', { 
+        detail: '显示新建文件夹表单',
+        bubbles: true 
+      }));
+    }
+  }, 100);
 }
 
 // 右键菜单 - 重命名事件处理

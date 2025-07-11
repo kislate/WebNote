@@ -16,17 +16,11 @@
     <!-- 使用 NoteApp 包装 Layout -->
     <note-app>
       <Layout>
-        <!-- 在导航栏添加编辑按钮和操作按钮 -->
+        <!-- 在导航栏添加WebNote菜单和编辑按钮 -->
         <template #nav-bar-content-after>
           <div class="nav-bar-custom-content">
+            <web-note-menu />
             <nav-bar-edit />
-          </div>
-        </template>
-        
-        <template #nav-bar-content-before>
-          <!-- 导航栏前添加登录和新建按钮 -->
-          <div class="nav-bar-custom-content-before">
-            <nav-actions />
           </div>
         </template>
         
@@ -59,7 +53,7 @@ import DefaultTheme from 'vitepress/theme'
 import NoteApp from './components/NoteApp.vue'
 import EnhancedSidebar from './components/EnhancedSidebar.vue'
 import NavBarEdit from './components/NavBarEdit.vue'
-import NavActions from './components/NavActions.vue'
+import WebNoteMenu from './components/WebNoteMenu.vue'
 import { ref, onMounted, watchEffect, computed } from 'vue'
 import { useData, useRoute } from 'vitepress'
 
@@ -254,15 +248,7 @@ onMounted(() => {
 .nav-bar-custom-content {
   display: flex;
   align-items: center;
-  gap: 16px;
-}
-
-/* 导航栏前自定义内容样式 */
-.nav-bar-custom-content-before {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-right: auto; /* 推动其他元素向右 */
+  gap: 8px;
 }
 
 /* 响应式调整 */

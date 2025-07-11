@@ -45,8 +45,9 @@ function emitEvent(eventName, data = null) {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 12px;
-  border-radius: 4px;
+  padding: 0 12px;
+  height: 32px;
+  border-radius: 8px;
   border: 1px solid var(--vp-c-divider);
   background-color: var(--vp-c-bg-soft);
   color: var(--vp-c-text-1);

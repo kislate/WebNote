@@ -148,18 +148,26 @@ async function syncWithGitHub() {
 
 // 创建新文件
 function createNewFile() {
-  document.dispatchEvent(new CustomEvent('webnote:create-file', { 
+  console.log('触发创建新文件事件');
+  // 确保事件能被捕获，使用window.document
+  const event = new CustomEvent('webnote:create-file', { 
     detail: { parentPath: 'docs' },
-    bubbles: true
-  }));
+    bubbles: true,
+    cancelable: true
+  });
+  window.document.dispatchEvent(event);
 }
 
 // 创建新文件夹
 function createNewFolder() {
-  document.dispatchEvent(new CustomEvent('webnote:create-folder', { 
+  console.log('触发创建新文件夹事件');
+  // 确保事件能被捕获，使用window.document
+  const event = new CustomEvent('webnote:create-folder', { 
     detail: { parentPath: 'docs' },
-    bubbles: true
-  }));
+    bubbles: true,
+    cancelable: true
+  });
+  window.document.dispatchEvent(event);
 }
 
 // 初始化
@@ -184,15 +192,18 @@ onMounted(async () => {
 .nav-action-button {
   display: flex;
   align-items: center;
-  padding: 6px 12px;
-  border-radius: 4px;
+  padding: 0 12px;
+  height: 32px;
+  border-radius: 8px;
   border: 1px solid var(--vp-c-divider);
-  background-color: var(--vp-c-bg-soft);
+  background-color: var(--vp-c-bg);
   color: var(--vp-c-text-1);
   cursor: pointer;
-  font-size: 14px;
+  font-size: 13px;
+  font-weight: 500;
   transition: all 0.2s;
   white-space: nowrap;
+  margin-left: 8px;
 }
 
 .nav-action-button:hover {
